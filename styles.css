@@ -1,0 +1,179 @@
+/* Faro Design System - Custom Styles & Theme Overrides */
+
+:root {
+    --surface: #13121b;
+    --surface-dim: #13121b;
+    --surface-bright: #3a3842;
+    --surface-container-lowest: #0e0d16;
+    --surface-container-low: #1c1a24;
+    --surface-container: #201e28;
+    --surface-container-high: #2a2933;
+    --surface-container-highest: #35343e;
+    --on-surface: #e5e0ee;
+    --on-surface-variant: #ddc1b2;
+    --outline: #a58c7e;
+    --outline-variant: #574337;
+    --primary: #ffb68b;
+    --primary-container: #ff8833;
+    --on-primary-container: #662d00;
+    --tertiary: #ffb2bd;
+    --tertiary-container: #ff8099;
+    --on-tertiary-container: #7e002f;
+    --error: #ffb4ab;
+    --error-container: #93000a;
+}
+
+body {
+    background-color: var(--surface);
+    color: var(--on-surface);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Material Symbols Fill State */
+.material-symbols-outlined.fill {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: var(--surface-container-lowest);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--surface-container-highest);
+    border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--outline);
+}
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Glassmorphism & Ambient Shadows */
+.glass-header {
+    background-color: rgba(19, 18, 27, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+.glass-card {
+    background-color: rgba(32, 30, 40, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+.ambient-shadow {
+    box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.5), 0 2px 8px -2px rgba(255, 136, 51, 0.05);
+}
+
+/* Leaflet Dark Theme Overrides */
+.leaflet-container {
+    background-color: #13121b !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+.leaflet-popup-content-wrapper {
+    background-color: #201e28 !important;
+    color: #e5e0ee !important;
+    border: 1px solid #574337;
+    border-radius: 1rem !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6) !important;
+}
+.leaflet-popup-tip {
+    background-color: #201e28 !important;
+}
+.leaflet-control-zoom a {
+    background-color: #2a2933 !important;
+    color: #e5e0ee !important;
+    border-color: #574337 !important;
+}
+.leaflet-control-zoom a:hover {
+    background-color: #35343e !important;
+    color: #ffb68b !important;
+}
+
+/* Custom Marker Pins */
+.custom-pin {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+    border: 2px solid #ffffff;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.custom-pin:hover {
+    transform: scale(1.18);
+    z-index: 1000 !important;
+}
+.custom-pin.lost {
+    background: linear-gradient(135deg, #ff8099, #c70039);
+}
+.custom-pin.found {
+    background: linear-gradient(135deg, #ff8833, #d95300);
+}
+
+/* View Transitions */
+.view-panel {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.view-panel.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.animate-fade-in-up {
+    animation: fadeInUp 0.4s ease-out forwards;
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 136, 51, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(255, 136, 51, 0);
+    }
+}
+.pulse-badge {
+    animation: pulseGlow 2s infinite;
+}
+
+/* Poster Print Styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #poster-print-container, #poster-print-container * {
+        visibility: visible;
+    }
+    #poster-print-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        color: #000;
+        background: #fff;
+    }
+}

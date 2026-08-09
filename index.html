@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Faro - Plataforma Oficial de Reencontro de Pets</title>
+    <meta name="description" content="O ponto de encontro oficial para quem perdeu ou encontrou um pet. Mapa interativo, alertas comunitários e diretório de ONGs de resgate."/>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface": "#13121b",
+                        "surface-dim": "#13121b",
+                        "surface-bright": "#3a3842",
+                        "surface-container-lowest": "#0e0d16",
+                        "surface-container-low": "#1c1a24",
+                        "surface-container": "#201e28",
+                        "surface-container-high": "#2a2933",
+                        "surface-container-highest": "#35343e",
+                        "on-surface": "#e5e0ee",
+                        "on-surface-variant": "#ddc1b2",
+                        "outline": "#a58c7e",
+                        "outline-variant": "#574337",
+                        "primary": "#ffb68b",
+                        "primary-container": "#ff8833",
+                        "on-primary-container": "#662d00",
+                        "tertiary": "#ffb2bd",
+                        "tertiary-container": "#ff8099",
+                        "on-tertiary-container": "#7e002f",
+                        "error": "#ffb4ab",
+                        "error-container": "#93000a",
+                        "on-error": "#690005"
+                    },
+                    fontFamily: {
+                        sans: ["Plus Jakarta Sans", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col antialiased selection:bg-primary-container selection:text-on-primary-container">
+
+    <!-- TOP HEADER -->
+    <header class="sticky top-0 z-40 glass-header border-b border-surface-container-highest shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex justify-between items-center gap-4">
+            
+            <!-- Brand -->
+            <a href="#home" onclick="navigateTo('home'); return false;" class="flex items-center gap-2 text-2xl font-bold tracking-tight text-on-surface hover:opacity-90 transition-opacity">
+                <span class="material-symbols-outlined text-primary-container fill text-3xl">pets</span>
+                <span class="bg-gradient-to-r from-on-surface via-primary to-primary-container bg-clip-text text-transparent">Faro</span>
+            </a>
+
+            <!-- Navigation Links (Desktop) -->
+            <nav class="hidden lg:flex items-center gap-6 font-semibold text-sm text-on-surface-variant">
+                <a href="#home" id="nav-home" onclick="navigateTo('home'); return false;" class="hover:text-primary transition-colors py-1">Início</a>
+                <a href="#map" id="nav-map" onclick="navigateTo('map'); return false;" class="hover:text-primary transition-colors py-1 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-lg">map</span> Mapa Interativo
+                </a>
+                <a href="#feed" id="nav-feed" onclick="navigateTo('feed'); return false;" class="hover:text-primary transition-colors py-1">Pets Registrados</a>
+                <a href="#register" id="nav-register" onclick="navigateTo('register'); return false;" class="hover:text-primary transition-colors py-1">Cadastrar Pet</a>
+                <a href="#ongs" id="nav-ongs" onclick="navigateTo('ongs'); return false;" class="hover:text-primary transition-colors py-1">ONGs de Resgate</a>
+                <a href="#guides" id="nav-guides" onclick="navigateTo('guides'); return false;" class="hover:text-primary transition-colors py-1">Guias de Busca</a>
+            </nav>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-3">
+                <button onclick="toggleEmergencyModal()" class="hidden sm:flex items-center gap-1.5 bg-error/90 hover:bg-error text-on-error text-xs font-bold px-3.5 py-2 rounded-full transition-all shadow-sm">
+                    <span class="material-symbols-outlined text-base">emergency</span>
+                    Emergência
+                </button>
+
+                <button onclick="navigateTo('register')" class="bg-primary-container hover:bg-primary-container/90 text-on-primary-container font-semibold text-sm px-4 py-2 rounded-full shadow-md flex items-center gap-1.5 transition-all transform active:scale-95">
+                    <span class="material-symbols-outlined text-lg">add_circle</span>
+                    <span class="hidden sm:inline">Cadastrar Pet</span>
+                </button>
+
+                <button onclick="toggleNotifications()" class="relative p-2 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-colors">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-primary-container rounded-full ring-2 ring-surface"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="flex-grow flex flex-col">
+
+        <!-- VIEW: HOME -->
+        <section id="view-home" class="view-panel active">
+            
+            <!-- Hero Banner -->
+            <div class="relative w-full min-h-[75vh] flex items-center justify-center py-16 overflow-hidden">
+                <div class="absolute inset-0 z-0 opacity-20">
+                    <img src="https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=1600&q=80" alt="Happy pets" class="w-full h-full object-cover"/>
+                    <div class="absolute inset-0 bg-gradient-to-b from-surface via-surface/90 to-surface"></div>
+                </div>
+
+                <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-12">
+                    <div class="w-full lg:w-1/2 flex flex-col gap-6 text-left">
+                        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface-container-high border border-outline-variant text-xs font-semibold text-primary">
+                            <span class="w-2 h-2 rounded-full bg-primary-container animate-ping"></span>
+                            Rede Nacional de Reencontro de Animais
+                        </div>
+
+                        <h1 class="text-4xl sm:text-5xl font-extrabold text-on-surface leading-tight">
+                            Trazendo eles de volta para <span class="bg-gradient-to-r from-primary-container to-primary bg-clip-text text-transparent">casa</span>, juntos.
+                        </h1>
+
+                        <p class="text-lg text-on-surface-variant max-w-xl">
+                            O Faro conecta proprietários desesperados, voluntários atenciosos e ONGs de resgate. Geolocalização em tempo real e comunidade em alerta imediato.
+                        </p>
+
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                            <button onclick="navigateTo('register', {type: 'lost'})" class="bg-tertiary-container hover:bg-tertiary-container/90 text-on-tertiary-container font-bold text-base px-6 py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 flex-1 transition-all transform hover:-translate-y-0.5">
+                                <span class="material-symbols-outlined">search</span>
+                                Perdi meu Pet
+                            </button>
+                            <button onclick="navigateTo('register', {type: 'found'})" class="bg-primary-container hover:bg-primary-container/90 text-on-primary-container font-bold text-base px-6 py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2 flex-1 transition-all transform hover:-translate-y-0.5">
+                                <span class="material-symbols-outlined">add_location_alt</span>
+                                Encontrei um Pet
+                            </button>
+                        </div>
+
+                        <!-- Stats -->
+                        <div class="grid grid-cols-3 gap-4 pt-6 border-t border-outline-variant/30 text-on-surface-variant">
+                            <div>
+                                <div class="text-2xl sm:text-3xl font-extrabold text-on-surface">2.450+</div>
+                                <div class="text-xs font-medium">Reencontros</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl sm:text-3xl font-extrabold text-on-surface">15k+</div>
+                                <div class="text-xs font-medium">Voluntários</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl sm:text-3xl font-extrabold text-on-surface">98%</div>
+                                <div class="text-xs font-medium">Taxa de Resposta</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Activity Panel -->
+                    <div class="w-full lg:w-5/12">
+                        <div class="bg-surface-container/80 backdrop-blur-xl border border-outline-variant/40 rounded-3xl p-6 ambient-shadow space-y-4">
+                            <div class="flex justify-between items-center pb-2 border-b border-outline-variant/30">
+                                <h3 class="text-lg font-bold text-on-surface flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary">campaign</span>
+                                    Alerta Comunitário Recente
+                                </h3>
+                                <span class="text-xs font-medium text-primary">Ao Vivo</span>
+                            </div>
+
+                            <div id="home-recent-feed" class="space-y-3">
+                                <!-- Dynamic recent cards injected via app.js -->
+                            </div>
+
+                            <button onclick="navigateTo('map')" class="w-full text-center py-2.5 bg-surface-container-high hover:bg-surface-variant text-on-surface font-semibold text-xs rounded-xl transition-colors border border-outline-variant">
+                                Ver Mapa Interativo Completo →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Urgent Alerts Section -->
+            <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <h2 class="text-2xl sm:text-3xl font-bold text-on-surface flex items-center gap-2">
+                            <span class="material-symbols-outlined text-error">emergency</span>
+                            Alertas Urgentes (Últimas 24h)
+                        </h2>
+                        <p class="text-sm text-on-surface-variant mt-1">Animais relatados recentemente na comunidade.</p>
+                    </div>
+                    <button onclick="navigateTo('feed')" class="hidden sm:flex text-sm font-semibold text-primary hover:underline items-center gap-1">
+                        Ver todos <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                    </button>
+                </div>
+
+                <div id="home-urgent-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <!-- Urgent pet cards injected via app.js -->
+                </div>
+            </section>
+
+            <!-- How It Works Section -->
+            <section class="py-16 bg-surface-container-low border-y border-outline-variant/20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <h2 class="text-3xl font-extrabold text-on-surface mb-3">Como o Faro Funciona</h2>
+                    <p class="text-on-surface-variant max-w-2xl mx-auto text-base mb-12">Processo simples, ágil e comunitário para localizar e proteger animais em perigo.</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+                        <div class="bg-surface-container p-8 rounded-3xl border border-outline-variant/30 flex flex-col items-center hover:border-primary transition-all group">
+                            <div class="w-20 h-20 rounded-2xl bg-primary-container/20 text-primary-container flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined text-4xl">app_registration</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-on-surface mb-2">1. Cadastre com Geolocalização</h3>
+                            <p class="text-sm text-on-surface-variant">Registre fotos, características e o ponto exato no mapa onde o pet foi visto ou perdido.</p>
+                        </div>
+
+                        <div class="bg-surface-container p-8 rounded-3xl border border-outline-variant/30 flex flex-col items-center hover:border-primary transition-all group">
+                            <div class="w-20 h-20 rounded-2xl bg-tertiary-container/20 text-tertiary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined text-4xl">campaign</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-on-surface mb-2">2. Notificação Raio Comunitário</h3>
+                            <p class="text-sm text-on-surface-variant">A plataforma alerta automaticamente tutores, clínicas veterinárias e voluntários na região.</p>
+                        </div>
+
+                        <div class="bg-surface-container p-8 rounded-3xl border border-outline-variant/30 flex flex-col items-center hover:border-primary transition-all group">
+                            <div class="w-20 h-20 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined text-4xl">volunteer_activism</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-on-surface mb-2">3. Reencontro Seguro</h3>
+                            <p class="text-sm text-on-surface-variant">Conecte-se com segurança por WhatsApp/Telefone para organizar o resgate e devolução do pet.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <!-- VIEW: INTERACTIVE MAP -->
+        <section id="view-map" class="view-panel h-[calc(100vh-65px)] flex flex-col">
+            <!-- Filter Bar Top -->
+            <div class="bg-surface-container p-3 border-b border-surface-container-highest flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar py-1">
+                    <button onclick="setMapFilter('all')" id="map-filter-all" class="px-3.5 py-1.5 rounded-full text-xs font-bold bg-primary-container text-on-primary-container">Todos</button>
+                    <button onclick="setMapFilter('lost')" id="map-filter-lost" class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-surface-variant text-on-surface-variant border border-outline-variant">Perdidos</button>
+                    <button onclick="setMapFilter('found')" id="map-filter-found" class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-surface-variant text-on-surface-variant border border-outline-variant">Encontrados</button>
+                    <span class="h-4 w-px bg-outline-variant mx-1"></span>
+                    <button onclick="setMapSpecies('all')" id="species-all" class="px-3 py-1 rounded-full text-xs bg-surface-variant text-on-surface-variant">Todas Espécies</button>
+                    <button onclick="setMapSpecies('dog')" id="species-dog" class="px-3 py-1 rounded-full text-xs bg-surface-variant text-on-surface-variant">Cães</button>
+                    <button onclick="setMapSpecies('cat')" id="species-cat" class="px-3 py-1 rounded-full text-xs bg-surface-variant text-on-surface-variant">Gatos</button>
+                    <button onclick="setMapSpecies('bird')" id="species-bird" class="px-3 py-1 rounded-full text-xs bg-surface-variant text-on-surface-variant">Aves</button>
+                </div>
+
+                <div class="relative min-w-[240px] flex-1 max-w-xs">
+                    <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-lg">search</span>
+                    <input type="text" id="map-search-input" onkeyup="handleMapSearch(this.value)" placeholder="Buscar bairro, cidade..." class="w-full bg-surface-container-high border border-outline-variant rounded-full py-1.5 pl-9 pr-3 text-xs text-on-surface focus:outline-none focus:border-primary"/>
+                </div>
+            </div>
+
+            <!-- Map & Sidebar Split -->
+            <div class="flex-grow flex flex-col md:flex-row overflow-hidden relative">
+                <!-- Pet List Sidebar -->
+                <aside class="w-full md:w-[380px] flex-none bg-surface-container flex flex-col border-r border-surface-container-highest h-1/3 md:h-full z-10">
+                    <div class="p-3 bg-surface-container-high border-b border-outline-variant/30 flex justify-between items-center">
+                        <span class="text-xs font-bold text-on-surface uppercase tracking-wider">Pets na Região</span>
+                        <span id="map-count-badge" class="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-xs border border-outline-variant">0 pets</span>
+                    </div>
+
+                    <div id="map-pet-list" class="flex-1 overflow-y-auto p-3 space-y-3 hide-scrollbar">
+                        <!-- Dynamic map list cards injected via app.js -->
+                    </div>
+                </aside>
+
+                <!-- Map Canvas -->
+                <div id="map-container" class="flex-1 w-full h-2/3 md:h-full z-0"></div>
+            </div>
+        </section>
+
+        <!-- VIEW: REGISTER PET FORM WIZARD -->
+        <section id="view-register" class="view-panel max-w-3xl mx-auto px-4 py-8 w-full">
+            <div class="bg-surface-container rounded-3xl p-6 sm:p-10 border border-outline-variant/40 ambient-shadow">
+                
+                <!-- Stepper Progress Header -->
+                <div class="mb-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-on-surface" id="form-step-title">Cadastrar Novo Alerta</h2>
+                            <p class="text-xs text-on-surface-variant" id="form-step-subtitle">Preencha os dados do animal para divulgar na comunidade.</p>
+                        </div>
+                        <span class="text-xs font-extrabold text-primary bg-primary-container/20 px-3 py-1 rounded-full" id="step-indicator">Passo 1 de 4</span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+                        <div id="form-progress-bar" class="h-full bg-gradient-to-r from-primary-container to-primary transition-all duration-300 w-1/4"></div>
+                    </div>
+                </div>
+
+                <!-- FORM CONTENT -->
+                <form id="pet-register-form" onsubmit="handleFormSubmit(event)">
+                    
+                    <!-- STEP 1: Basic Info -->
+                    <div id="step-1" class="step-panel space-y-6">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Qual é o objetivo do relato? *</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="cursor-pointer border-2 border-outline-variant rounded-2xl p-4 flex flex-col items-center gap-2 text-center transition-all bg-surface-container-high has-[:checked]:border-tertiary has-[:checked]:bg-tertiary-container/10">
+                                    <input type="radio" name="form_type" value="lost" checked class="hidden" onchange="updateFormTypeUI()"/>
+                                    <span class="material-symbols-outlined text-3xl text-tertiary">search</span>
+                                    <span class="font-bold text-sm text-on-surface">Perdi meu Pet</span>
+                                    <span class="text-xs text-on-surface-variant">Estou procurando meu animal</span>
+                                </label>
+                                <label class="cursor-pointer border-2 border-outline-variant rounded-2xl p-4 flex flex-col items-center gap-2 text-center transition-all bg-surface-container-high has-[:checked]:border-primary-container has-[:checked]:bg-primary-container/10">
+                                    <input type="radio" name="form_type" value="found" class="hidden" onchange="updateFormTypeUI()"/>
+                                    <span class="material-symbols-outlined text-3xl text-primary-container">add_location_alt</span>
+                                    <span class="font-bold text-sm text-on-surface">Encontrei um Pet</span>
+                                    <span class="text-xs text-on-surface-variant">Acolhi ou avistei um pet solto</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Nome do Pet (ou Apelido)</label>
+                                <input type="text" id="form_name" required placeholder="Ex: Thor, Luna..." class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary"/>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Espécie *</label>
+                                <select id="form_species" required class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface focus:border-primary">
+                                    <option value="dog">Cachorro</option>
+                                    <option value="cat">Gato</option>
+                                    <option value="bird">Ave / Pássaro</option>
+                                    <option value="other">Outros (Coelho, Tartaruga...)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Raça</label>
+                                <input type="text" id="form_breed" placeholder="Ex: Poodle, Vira-lata..." class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Sexo</label>
+                                <select id="form_gender" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface">
+                                    <option value="Macho">Macho</option>
+                                    <option value="Fêmea">Fêmea</option>
+                                    <option value="Desconhecido">Desconhecido</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Porte</label>
+                                <select id="form_size" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface">
+                                    <option value="Pequeno">Pequeno</option>
+                                    <option value="Médio">Médio</option>
+                                    <option value="Grande">Grande</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: Location & Date -->
+                    <div id="step-2" class="step-panel hidden space-y-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Data do Ocorrido *</label>
+                                <input type="date" id="form_date" required class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Horário Aproximado</label>
+                                <input type="time" id="form_time" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1">Endereço / Ponto de Referência *</label>
+                            <input type="text" id="form_address" required placeholder="Ex: Av. Paulista, 1500, Bela Vista, São Paulo - SP" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Bairro *</label>
+                                <input type="text" id="form_neighborhood" required placeholder="Ex: Pinheiros" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Cidade *</label>
+                                <input type="text" id="form_city" required placeholder="Ex: São Paulo" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Estado (UF) *</label>
+                                <input type="text" id="form_uf" required maxLength="2" placeholder="Ex: SP" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm uppercase text-on-surface"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: Details & Image Upload -->
+                    <div id="step-3" class="step-panel hidden space-y-6">
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1">Descrição & Características Marcantes *</label>
+                            <textarea id="form_description" required rows="3" placeholder="Coleira usada, manchas específicas, comportamento com estranhos, necessidades médicas..." class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Valor da Recompensa (Opcional)</label>
+                                <input type="text" id="form_reward" placeholder="Ex: R$ 500,00" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Microchip / Identificação</label>
+                                <input type="text" id="form_microchip" placeholder="Ex: Possui coleira com telefone / Chip nº" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-2">URL da Foto do Pet (ou Upload)</label>
+                            <input type="url" id="form_imageUrl" placeholder="Cole o link de uma imagem (https://...)" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface mb-2"/>
+                            <p class="text-xs text-on-surface-variant">Se não tiver um link, usaremos uma foto de modelo para o alerta imediato.</p>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: Contact & Finish -->
+                    <div id="step-4" class="step-panel hidden space-y-6">
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1">Nome do Responsável / Contato *</label>
+                            <input type="text" id="form_contactName" required placeholder="Seu nome completo" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">Telefone com DDD (WhatsApp) *</label>
+                                <input type="tel" id="form_contactPhone" required placeholder="(11) 99999-9999" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-on-surface-variant mb-1">E-mail para Notificações</label>
+                                <input type="email" id="form_contactEmail" placeholder="seu@email.com" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-surface-container-high rounded-2xl border border-outline-variant/40 space-y-2">
+                            <label class="flex items-start gap-2 cursor-pointer">
+                                <input type="checkbox" required class="mt-1 rounded border-outline-variant bg-surface text-primary focus:ring-primary"/>
+                                <span class="text-xs text-on-surface-variant">Concordo em divulgar os dados fornecidos na plataforma Faro para facilitar a localização do animal.</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Wizard Control Buttons -->
+                    <div class="flex justify-between items-center pt-8 border-t border-outline-variant/30 mt-8">
+                        <button type="button" id="btn-wizard-prev" onclick="wizardStep(-1)" class="hidden bg-surface-variant hover:bg-surface-container-high text-on-surface font-semibold text-sm px-6 py-3 rounded-xl transition-all">
+                            ← Voltar
+                        </button>
+                        <div class="ml-auto flex gap-3">
+                            <button type="button" id="btn-wizard-next" onclick="wizardStep(1)" class="bg-primary-container hover:bg-primary-container/90 text-on-primary-container font-bold text-sm px-8 py-3 rounded-xl transition-all shadow-md">
+                                Próximo Passo →
+                            </button>
+                            <button type="submit" id="btn-wizard-submit" class="hidden bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm px-8 py-3 rounded-xl transition-all shadow-md">
+                                Concluir & Publicar Alerta 🐾
+                            </button>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+        </section>
+
+        <!-- VIEW: PETS FEED GRID -->
+        <section id="view-feed" class="view-panel max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                    <h1 class="text-3xl font-extrabold text-on-surface">Pets Registrados</h1>
+                    <p class="text-sm text-on-surface-variant mt-1">Explore os relatórios de animais perdidos e encontrados em todo o país.</p>
+                </div>
+
+                <!-- Feed Filters -->
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <div class="relative flex-1 md:w-64">
+                        <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-lg">search</span>
+                        <input type="text" id="feed-search-input" onkeyup="renderFeedGrid()" placeholder="Pesquisar raça, nome..." class="w-full bg-surface-container-high border border-outline-variant rounded-full py-2 pl-9 pr-4 text-xs text-on-surface"/>
+                    </div>
+                    <select id="feed-filter-type" onchange="renderFeedGrid()" class="bg-surface-container-high border border-outline-variant rounded-full py-2 px-4 text-xs text-on-surface">
+                        <option value="all">Todos Status</option>
+                        <option value="lost">Apenas Perdidos</option>
+                        <option value="found">Apenas Encontrados</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="feed-pets-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Feed cards injected via app.js -->
+            </div>
+        </section>
+
+        <!-- VIEW: ONGS DIRECTORY -->
+        <section id="view-ongs" class="view-panel max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+            <div class="text-center max-w-3xl mx-auto mb-10">
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-on-surface mb-3">Diretório de ONGs de Resgate</h1>
+                <p class="text-base text-on-surface-variant">Conecte-se com organizações dedicadas ao resgate, tratamento e adoção responsável de animais em todo o Brasil.</p>
+            </div>
+
+            <!-- ONG Filter Bar -->
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-8 bg-surface-container p-4 rounded-2xl border border-outline-variant/30">
+                <div class="flex flex-wrap items-center gap-3 flex-1">
+                    <div class="relative flex-1 min-w-[200px]">
+                        <span class="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant text-lg">search</span>
+                        <input type="text" id="ong-search-input" onkeyup="renderOngsGrid()" placeholder="Buscar ONG por nome ou cidade..." class="w-full bg-surface-container-high border border-outline-variant rounded-xl py-2 pl-9 pr-4 text-xs text-on-surface"/>
+                    </div>
+                    <select id="ong-filter-uf" onchange="renderOngsGrid()" class="bg-surface-container-high border border-outline-variant rounded-xl py-2 px-4 text-xs text-on-surface">
+                        <option value="all">Todos os Estados (UF)</option>
+                        <option value="SP">São Paulo (SP)</option>
+                        <option value="RJ">Rio de Janeiro (RJ)</option>
+                        <option value="MG">Minas Gerais (MG)</option>
+                        <option value="PR">Paraná (PR)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="ongs-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- ONG cards injected via app.js -->
+            </div>
+        </section>
+
+        <!-- VIEW: GUIDES & ARTICLES -->
+        <section id="view-guides" class="view-panel max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+            <div class="text-center max-w-3xl mx-auto mb-10">
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-on-surface mb-3">Guias de Reencontro & Instruções</h1>
+                <p class="text-base text-on-surface-variant">Metodologias comprovadas e conselhos práticos para agir rapidamente nas primeiras horas.</p>
+            </div>
+
+            <div id="guides-accordion" class="space-y-6 max-w-4xl mx-auto">
+                <!-- Guides list injected via app.js -->
+            </div>
+        </section>
+
+        <!-- VIEW: CONTACT & COMMUNITY -->
+        <section id="view-contact" class="view-panel max-w-4xl mx-auto px-4 py-12 w-full">
+            <div class="bg-surface-container rounded-3xl p-8 border border-outline-variant/40 ambient-shadow">
+                <h2 class="text-3xl font-extrabold text-on-surface mb-2">Fale Conosco</h2>
+                <p class="text-sm text-on-surface-variant mb-8">Precisa de suporte com a plataforma ou relatar um problema na sua área?</p>
+
+                <form onsubmit="handleContactSubmit(event)" class="space-y-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1">Seu Nome</label>
+                            <input type="text" required placeholder="Nome completo" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface-variant mb-1">E-mail de Contato</label>
+                            <input type="email" required placeholder="seu@email.com" class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"/>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1">Assunto</label>
+                        <select class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface">
+                            <option>Dúvida sobre Cadastro de Pet</option>
+                            <option>Parceria com ONG / Protetor</option>
+                            <option>Denúncia ou Moderação de Alerta</option>
+                            <option>Outros</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface-variant mb-1">Mensagem</label>
+                        <textarea rows="4" required placeholder="Escreva sua mensagem aqui..." class="w-full bg-surface-container-high border border-outline-variant rounded-xl p-3 text-sm text-on-surface"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-primary-container hover:bg-primary-container/90 text-on-primary-container font-bold text-sm py-3.5 rounded-xl transition-all shadow-md">
+                        Enviar Mensagem ✉️
+                    </button>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-surface-container-lowest border-t border-outline-variant/30 py-10 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2 text-xl font-bold text-on-surface">
+                <span class="material-symbols-outlined text-primary-container fill">pets</span> Faro
+            </div>
+            <div class="flex flex-wrap justify-center gap-6 text-xs text-on-surface-variant font-medium">
+                <a href="#home" onclick="navigateTo('home')" class="hover:text-primary">Início</a>
+                <a href="#map" onclick="navigateTo('map')" class="hover:text-primary">Mapa Interativo</a>
+                <a href="#ongs" onclick="navigateTo('ongs')" class="hover:text-primary">ONGs Parceiras</a>
+                <a href="#guides" onclick="navigateTo('guides')" class="hover:text-primary">Guias de Busca</a>
+                <a href="#contact" onclick="navigateTo('contact')" class="hover:text-primary">Fale Conosco</a>
+            </div>
+            <div class="text-xs text-on-surface-variant opacity-75">
+                © 2026 Faro Pet Recovery Platform. Feito com compaixão pela causa animal.
+            </div>
+        </div>
+    </footer>
+
+    <!-- MOBILE BOTTOM NAVIGATION -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface-container/95 backdrop-blur-lg border-t border-outline-variant/40 flex justify-around items-center py-2 px-1">
+        <button onclick="navigateTo('home')" class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary text-[10px] font-semibold">
+            <span class="material-symbols-outlined text-xl">home</span>
+            Início
+        </button>
+        <button onclick="navigateTo('map')" class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary text-[10px] font-semibold">
+            <span class="material-symbols-outlined text-xl">map</span>
+            Mapa
+        </button>
+        <button onclick="navigateTo('register')" class="flex flex-col items-center gap-1 text-primary-container text-[10px] font-bold">
+            <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center -mt-5 shadow-lg">
+                <span class="material-symbols-outlined text-2xl">add</span>
+            </div>
+            Cadastrar
+        </button>
+        <button onclick="navigateTo('ongs')" class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary text-[10px] font-semibold">
+            <span class="material-symbols-outlined text-xl">shield_heart</span>
+            ONGs
+        </button>
+        <button onclick="navigateTo('guides')" class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary text-[10px] font-semibold">
+            <span class="material-symbols-outlined text-xl">menu_book</span>
+            Guias
+        </button>
+    </nav>
+
+    <!-- MODAL: PET DETAIL -->
+    <div id="modal-pet-detail" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-surface-container rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-outline-variant/40 ambient-shadow relative p-6 space-y-6">
+            <button onclick="closePetModal()" class="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface bg-surface-variant p-2 rounded-full">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+
+            <div id="pet-modal-content">
+                <!-- Modal content dynamically injected -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: POSTER GENERATOR -->
+    <div id="modal-poster" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-surface-container rounded-3xl max-w-xl w-full p-6 border border-outline-variant/40 ambient-shadow relative space-y-4">
+            <button onclick="closePosterModal()" class="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface bg-surface-variant p-2 rounded-full">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+
+            <h3 class="text-xl font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">print</span>
+                Gerador de Cartaz de Busca
+            </h3>
+
+            <div id="poster-preview-card" class="bg-white text-black p-6 rounded-2xl border-4 border-red-600 space-y-4 text-center">
+                <h1 id="poster-title" class="text-3xl font-black text-red-600 uppercase tracking-widest">PROCURA-SE</h1>
+                <img id="poster-img" src="" class="w-48 h-48 object-cover mx-auto rounded-xl border-2 border-black"/>
+                <div>
+                    <h2 id="poster-name" class="text-2xl font-bold">NOME DO PET</h2>
+                    <p id="poster-breed" class="text-sm font-semibold text-gray-700">Raça - Porte</p>
+                </div>
+                <div class="bg-gray-100 p-3 rounded-lg text-left text-xs space-y-1">
+                    <p><strong>Visto em:</strong> <span id="poster-location">Endereço...</span></p>
+                    <p><strong>Descrição:</strong> <span id="poster-desc">Detalhes...</span></p>
+                    <p><strong>Recompensa:</strong> <span id="poster-reward" class="text-red-600 font-bold">R$ 0</span></p>
+                </div>
+                <div class="bg-red-600 text-white p-3 rounded-xl font-bold text-lg">
+                    CONTATO: <span id="poster-phone">(00) 00000-0000</span>
+                </div>
+            </div>
+
+            <button onclick="window.print()" class="w-full bg-primary-container text-on-primary-container font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-md">
+                <span class="material-symbols-outlined">print</span> Imprimir / Salvar em PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="mock_data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
